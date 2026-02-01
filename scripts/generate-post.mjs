@@ -43,6 +43,17 @@ const languages = [
 // =======================
 const sleep = ms => new Promise(res => setTimeout(res, ms))
 
+const parseAIResponse = (text) => {
+    // Remove markdown fencing if present
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim()
+    try {
+        return JSON.parse(clean)
+    } catch (e) {
+        console.error('Failed to parse JSON:', clean)
+        throw e
+    }
+}
+
 async function generateWithRetry(prompt, maxRetries = 5) {
     let attempt = 0
 
@@ -105,7 +116,7 @@ Rules:
 
     const result = await generateWithRetry(prompt)
     const text = result.response.text()
-    return JSON.parse(text)
+    return parseAIResponse(text)
 }
 
 // =======================
@@ -135,7 +146,7 @@ Rules:
 
     const result = await generateWithRetry(prompt)
     const text = result.response.text()
-    return JSON.parse(text)
+    return parseAIResponse(text)
 }
 
 // =======================
