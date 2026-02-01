@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Prakriti - Ayurveda Lifestyle Website
 
-## Getting Started
+An earthy, authentic Ayurveda lifestyle website built with Next.js, Vanilla CSS, and i18n support.
 
-First, run the development server:
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js installed (v18 or higher recommended)
+- npm or yarn
+
+### Run Locally (Development)
+To start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build for Production
+To build and start the optimized production version:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## 📝 How to Add Blog Posts
 
-To learn more about Next.js, take a look at the following resources:
+The blog system is **dynamic**. You do not need to edit code to add new posts. Just add Markdown files.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Manual Method
+- Create `.md` files in `src/content/en/` or `src/content/hi/`.
+- Add frontmatter (title, date, excerpt) and content.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. Automated AI Method (Daily)
+This project includes a **GitHub Action** that automatically generates a new Ayurveda tip every day using Google Gemini AI.
 
-## Deploy on Vercel
+#### Setup Instructions:
+1.  **Get an API Key**: Go to [Google AI Studio](https://aistudio.google.com/) and create a free API key.
+2.  **Add to GitHub Secrets**:
+    -   Go to your repository on GitHub.
+    -   Click **Settings** > **Secrets and variables** > **Actions**.
+    -   Click **New repository secret**.
+    -   Name: `GEMINI_API_KEY`
+    -   Value: (Paste your API key here)
+    -   Click **Add secret**.
+3.  **Enable Workflow**: Go to the **Actions** tab in GitHub and ensure the "Daily Ayurveda Tip" workflow is enabled. It will run automatically at 00:00 UTC.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🎨 Customization
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Colors & Fonts**: Edit `src/app/globals.css` to change CSS variables (colors, spacing).
+- **Translations**: Edit `src/dictionaries/en.json` or `hi.json` to change UI text.
+- **Ads**: Edit `src/components/AdUnit.tsx` to insert your real AdSense code.

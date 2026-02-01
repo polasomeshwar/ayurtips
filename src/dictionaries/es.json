@@ -1,0 +1,11 @@
+{
+    "home": {
+        "title": "Bienvenido a Prakriti",
+        "description": "Consejos diarios de Ayurveda para tu estilo de vida."
+    },
+    "nav": {
+        "home": "Inicio",
+        "about": "Acerca de",
+        "journal": "Diario"
+    }
+}

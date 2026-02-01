@@ -1,0 +1,11 @@
+{
+    "home": {
+        "title": "Welcome to Prakriti",
+        "description": "Daily Ayurveda tips for your lifestyle."
+    },
+    "nav": {
+        "home": "Home",
+        "about": "About",
+        "journal": "Journal"
+    }
+}
