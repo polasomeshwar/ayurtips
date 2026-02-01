@@ -86,11 +86,17 @@ async function generateEnglishPost() {
     console.log('🪷 Generating English Ayurveda tip...')
 
     const prompt = `
-    You are an expert Ayurveda practitioner writing for a lifestyle blog.
+    You are an expert Ayurveda practitioner writing for a lifestyle blog in **India**.
     Generate ONE unique, seasonal daily Ayurveda tip for today: ${dateString}.
     
+    **Tone & Style:**
+    - Use **Basic Indian English**. Simple, warm, and conversational.
+    - Avoid complex words or heavy academic language.
+    - Write as if you are giving advice to a friend or family member.
+    - Use phrases commonly understood in India.
+    
     Format:
-    - Title: Catchy and inspiring
+    - Title: Catchy and simple
     - Excerpt: 1-2 sentences for preview
     - Content: Full blog post in Markdown (headings, bullet points, practical advice).
     `
