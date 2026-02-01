@@ -48,7 +48,33 @@ async function generatePost() {
   `
 
     try {
-        const result = await model.generateContent(prompt)
+        // Retry logic with exponential backoff
+        let retries = 3;
+        let delay = 30000; // Start with 30s delay
+
+        let result;
+        while (retries > 0) {
+            try {
+                result = await model.generateContent(prompt)
+                break;
+            } catch (error) {
+                console.warn(`Attempt failed with error: ${error.message}`);
+                // Check for 429 or quota issues
+                if (error.message.includes('429') || error.message.includes('Quota') || error.status === 429) {
+                    console.log(`Rate limit hit. Retrying in ${delay / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Double the delay
+                    retries--;
+                } else {
+                    throw error; // Throw other errors immediately
+                }
+            }
+        }
+
+        if (!result) {
+            throw new Error('Failed to generate content after retries.');
+        }
+
         const response = await result.response
         const text = response.text()
 
