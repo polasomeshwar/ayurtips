@@ -17,7 +17,7 @@ const genAI = new GoogleGenerativeAI(API_KEY)
 // Using gemini-1.5-flash as it has excellent JSON mode support and high rate limits.
 // You can switch to 'gemini-2.0-flash-exp' or others if you have access.
 const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: {
