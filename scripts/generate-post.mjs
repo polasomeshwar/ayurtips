@@ -2,7 +2,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import fs from 'fs'
 import path from 'path'
 
-// Get API Key from environment variables
+// =======================
+// ENV + SETUP
+// =======================
 const API_KEY = process.env.GEMINI_API_KEY
 
 if (!API_KEY) {
@@ -11,81 +13,136 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' })
 
-// Current date for filename
+const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash-lite',
+    generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1200
+    }
+})
+
+// =======================
+// DATE + SLUG
+// =======================
 const today = new Date()
 const dateString = today.toISOString().split('T')[0]
 const slug = `daily-tip-${dateString}`
 
-// Supported languages
+// =======================
+// LANGUAGES
+// =======================
 const languages = [
     { code: 'en', name: 'English' },
     { code: 'hi', name: 'Hindi' },
     { code: 'es', name: 'Spanish' }
 ]
 
-async function generatePost() {
-    console.log('Generating daily Ayurveda tip...')
+// =======================
+// HELPERS
+// =======================
+const sleep = ms => new Promise(res => setTimeout(res, ms))
+
+async function generateWithRetry(prompt, maxRetries = 5) {
+    let attempt = 0
+
+    while (attempt < maxRetries) {
+        try {
+            return await model.generateContent(prompt)
+        } catch (error) {
+            attempt++
+
+            const isQuota =
+                error?.status === 429 ||
+                error?.message?.includes('Quota') ||
+                error?.message?.includes('rate')
+
+            if (!isQuota || attempt === maxRetries) {
+                throw error
+            }
+
+            // Default delay
+            let delayMs = 20000
+
+            // Try to respect Gemini retryDelay if present
+            const retryMatch = error.message?.match(/(\d+)s/i)
+            if (retryMatch) {
+                delayMs = Number(retryMatch[1]) * 1000
+            }
+
+            // Add jitter
+            delayMs += Math.floor(Math.random() * 2000)
+
+            console.log(`⏳ Rate limit hit. Retry ${attempt}/${maxRetries} in ${delayMs / 1000}s`)
+            await sleep(delayMs)
+        }
+    }
+}
+
+// =======================
+// STEP 1: GENERATE ENGLISH
+// =======================
+async function generateEnglishPost() {
+    console.log('🪷 Generating English Ayurveda tip...')
 
     const prompt = `
-    You are an expert Ayurveda practitioner writing a daily blog post for a lifestyle website.
-    Topic: Generate a unique, interesting, and seasonal Ayurveda tip or topic for today (${dateString}).
-    
-    Target Languages: ${languages.map(l => `${l.name} (${l.code})`).join(', ')}.
+You are an expert Ayurveda practitioner writing for a lifestyle blog.
 
-    Output Format: JSON object where keys are the language codes (${languages.map(l => l.code).join(', ')}) and values are objects with "title", "excerpt", and "content" (markdown).
-    
-    Structure:
-    {
-      "en": { "title": "...", "excerpt": "...", "content": "..." },
-      "hi": { "title": "...", "excerpt": "...", "content": "..." },
-      "es": { "title": "...", "excerpt": "...", "content": "..." }
-    }
-    
-    Ensure translations are culturally accurate.
-    Do not include any markdown code blocks (like \`\`\`json) in your response, just the raw JSON string.
-  `
+Generate ONE unique, seasonal daily Ayurveda tip for ${dateString}.
 
-    try {
-        // Retry logic with exponential backoff
-        let retries = 3;
-        let delay = 30000; // Start with 30s delay
+Output JSON ONLY:
+{
+  "title": "...",
+  "excerpt": "...",
+  "content": "Markdown formatted content"
+}
 
-        let result;
-        while (retries > 0) {
-            try {
-                result = await model.generateContent(prompt)
-                break;
-            } catch (error) {
-                console.warn(`Attempt failed with error: ${error.message}`);
-                // Check for 429 or quota issues
-                if (error.message.includes('429') || error.message.includes('Quota') || error.status === 429) {
-                    console.log(`Rate limit hit. Retrying in ${delay / 1000} seconds...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; // Double the delay
-                    retries--;
-                } else {
-                    throw error; // Throw other errors immediately
-                }
-            }
-        }
+Rules:
+- No code blocks
+- No explanations
+- Raw JSON only
+`
 
-        if (!result) {
-            throw new Error('Failed to generate content after retries.');
-        }
+    const result = await generateWithRetry(prompt)
+    const text = result.response.text()
+    return JSON.parse(text)
+}
 
-        const response = await result.response
-        const text = response.text()
+// =======================
+// STEP 2: TRANSLATE
+// =======================
+async function translatePost(post, lang) {
+    console.log(`🌍 Translating to ${lang.name}...`)
 
-        // Clean potential markdown fencing
-        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim()
-        const data = JSON.parse(cleanJson)
+    const prompt = `
+Translate the following Ayurveda content into ${lang.name} (${lang.code}).
+Ensure cultural and linguistic accuracy.
 
-        for (const lang of languages) {
-            if (data[lang.code]) {
-                const post = data[lang.code]
-                const content = `---
+Input JSON:
+${JSON.stringify(post)}
+
+Output JSON ONLY with same keys:
+{
+  "title": "...",
+  "excerpt": "...",
+  "content": "Markdown formatted content"
+}
+
+Rules:
+- No code blocks
+- Raw JSON only
+`
+
+    const result = await generateWithRetry(prompt)
+    const text = result.response.text()
+    return JSON.parse(text)
+}
+
+// =======================
+// SAVE MARKDOWN
+// =======================
+function savePost(lang, post) {
+    const content = `---
 title: '${post.title.replace(/'/g, "''")}'
 date: '${dateString}'
 excerpt: '${post.excerpt.replace(/'/g, "''")}'
@@ -93,21 +150,35 @@ excerpt: '${post.excerpt.replace(/'/g, "''")}'
 
 ${post.content}
 `
-                const dirPath = path.join(process.cwd(), `src/content/${lang.code}`)
-                if (!fs.existsSync(dirPath)) {
-                    fs.mkdirSync(dirPath, { recursive: true })
-                }
 
-                const filePath = path.join(dirPath, `${slug}.md`)
-                fs.writeFileSync(filePath, content)
-                console.log(`Saved ${lang.name} post: ${filePath}`)
-            } else {
-                console.warn(`Missing data for ${lang.name}`)
-            }
+    const dirPath = path.join(process.cwd(), `src/content/${lang.code}`)
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true })
+    }
+
+    const filePath = path.join(dirPath, `${slug}.md`)
+    fs.writeFileSync(filePath, content)
+    console.log(`✅ Saved ${lang.name}: ${filePath}`)
+}
+
+// =======================
+// MAIN
+// =======================
+async function generatePost() {
+    try {
+        const englishPost = await generateEnglishPost()
+        savePost({ code: 'en', name: 'English' }, englishPost)
+
+        // Translate sequentially to stay under quota
+        for (const lang of languages.filter(l => l.code !== 'en')) {
+            await sleep(3000) // small spacing between requests
+            const translatedPost = await translatePost(englishPost, lang)
+            savePost(lang, translatedPost)
         }
 
+        console.log('🎉 Daily Ayurveda posts generated successfully!')
     } catch (error) {
-        console.error('Error generating post:', error)
+        console.error('❌ Error generating post:', error)
         process.exit(1)
     }
 }
